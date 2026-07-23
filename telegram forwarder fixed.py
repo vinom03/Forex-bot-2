@@ -84,7 +84,7 @@ if not BOT_TOKEN:
     )
 
 DEST_CHANNEL = "@ForexGold_Pro"      # 🔧 قناتك (وين يترسل المنشور)
-SOURCE_CHANNEL = "ForexBreakingNews"  # 🔧 القناة المصدر (منين يُجلب المنشور)
+SOURCE_CHANNEL = "wezzyfx1"  # 🔧 القناة المصدر (منين يُجلب المنشور)
 
 TELEGRAM_CAPTION_LIMIT = 1024  # حد تيليجرام لطول الكابشن مع الصور
 
@@ -211,7 +211,7 @@ def get_channel_posts():
 # ============================================================
 # تنظيف النص وحذف توقيع القناة المصدر + إضافة توقيعك
 # ============================================================
-OWN_SIGNATURE = "📢 قناة ForexGold Pro || اشترك الآن:\nhttps://t.me/ForexGold_Pro"  # 🔧
+OWN_SIGNATURE = "📢 قناة ForexGold Pro || اشترك الآن:\nhttps://t.me/YOSEEF_ADMIN"  # 🔧
 
 # 🔧 خلي القيمة False لو تبي توقف التنسيق العريض وترجع للنص العادي
 BOLD_TEXT = True
