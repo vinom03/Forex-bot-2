@@ -7,10 +7,15 @@ r"""
     يراقب قناة تيليجرام مصدر (SOURCE_CHANNEL) وينسخ أي منشور جديد
     فيها (نص و/أو صور) إلى قناتك (DEST_CHANNEL)، بعد:
       1. تنظيف تنسيق النص (حذف وسوم HTML، تحويل الأسطر...)
-      2. حذف توقيع/رابط القناة المصدر من نهاية المنشور
+      2. حذف توقيع/رابط القناة المصدر من نهاية المنشور (بس لو المصدر
+         سوى توقيعه هو بنفس المنشور - غير كذا يترسل نظيف بلا توقيع)
       3. إضافة توقيعك الخاص (OWN_SIGNATURE) بدلاً منه
       4. رفع أي صور موجودة بالمنشور مباشرة (مو بالرابط، تلافياً لأخطاء
          تيليجرام برفض الروابط الخارجية)
+      5. لو المنشور "رد" على منشور ثاني بالمصدر، وكانت "نسخته" موجودة
+         بقناتك (بدفتر المطابقة)، يترسل كـ"رد حقيقي" على نفس المنشور
+         بقناتك. لو ما لقى مطابقة (منشور قديم قبل ما نبدأ نتابعه)،
+         يترسل عادي بدون رد.
 
 طريقة التشغيل (مصمم لـ GitHub Actions):
     هذا الملف "تشغيلة وحدة" (run once) — يشتغل، يتحقق من المنشورات
@@ -29,6 +34,9 @@ r"""
                             إرسال نفس المنشورات كل تشغيلة).
     - bot_log.txt        -> سجل نصي بكل عملية صارت بكل تشغيلة (آخر 300
                             سطر محفوظين، الأقدم يُحذف تلقائياً).
+    - id_map.json         -> دفتر مطابقة: يربط رقم منشور المصدر برقم
+                            نفس المنشور بقناتك، لازم لميزة الردود
+                            (آخر 500 مطابقة بس محفوظة، الأقدم تُحذف).
 
 للتعديل مستقبلاً:
     - DEST_CHANNEL / SOURCE_CHANNEL / OWN_SIGNATURE بالأسفل.
@@ -83,8 +91,8 @@ if not BOT_TOKEN:
         "خطأ: لازم تحط توكن البوت بمتغير بيئة اسمه BOT_TOKEN (عن طريق GitHub Secrets)."
     )
 
-# DEST_CHANNEL = "@ForexGold_Pro"      # 🔧 قناتك (وين يترسل المنشور)
-# SOURCE_CHANNEL = "wezzyfx1"  # 🔧 القناة المصدر (منين يُجلب المنشور)
+DEST_CHANNEL = "@ForexGold_Pro"      # 🔧 قناتك (وين يترسل المنشور)
+SOURCE_CHANNEL = "wezzyfx1"  # 🔧 القناة المصدر (منين يُجلب المنشور)
 
 TELEGRAM_CAPTION_LIMIT = 1024  # حد تيليجرام لطول الكابشن مع الصور
 
@@ -134,6 +142,35 @@ def load_last_seen_id():
 def save_last_seen_id(post_id):
     with open(LAST_SEEN_FILE, "w") as f:
         f.write(str(post_id))
+
+
+# ============================================================
+# دفتر مطابقة: يربط رقم منشور القناة المصدر برقم نفس المنشور بعد
+# ما يترسل لقناتك. لازم لميزة الردود: لو منشور جديد "رد" على منشور
+# قديم بالمصدر، نحتاج نعرف "نسخته" عندك عشان نرسل رد حقيقي عليه.
+# ============================================================
+ID_MAP_FILE = "id_map.json"
+MAX_ID_MAP_ENTRIES = 500  # نحتفظ بآخر 500 مطابقة بس عشان الملف ما يكبر بلا حدود
+
+
+def load_id_map():
+    if os.path.exists(ID_MAP_FILE):
+        try:
+            with open(ID_MAP_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_id_map(id_map):
+    if len(id_map) > MAX_ID_MAP_ENTRIES:
+        # نحتفظ بأحدث المطابقات بس (حسب رقم منشور المصدر)
+        newest_keys = sorted(id_map.keys(), key=lambda k: int(k))[-MAX_ID_MAP_ENTRIES:]
+        id_map = {k: id_map[k] for k in newest_keys}
+    with open(ID_MAP_FILE, "w", encoding="utf-8") as f:
+        json.dump(id_map, f)
+    return id_map
 
 
 # ============================================================
@@ -190,6 +227,23 @@ def get_channel_posts():
         if msg_div.find(class_=lambda c: c and "service" in c):
             continue
 
+        # مهم جداً: لو المنشور "رد" على منشور ثاني، تيليجرام يحط معاينة
+        # مقتبسة من المنشور القديم بصنف "tgme_widget_message_reply" —
+        # المشكلة إن هالمعاينة تستخدم *نفس* صنف النص الحقيقي
+        # (tgme_widget_message_text) جوّاها! فلو ما استثنيناها، كودنا
+        # يمسك النص القديم المقتبس بدل النص الجديد الحقيقي (وهذا كان
+        # يفسر: نصوص متكررة/غلط، وانضغاط لسطر وحد لأن المعاينة مختصرة).
+        # نستخرج أول رقم المنشور المقتبس (عشان ميزة الردود)، وبعدين
+        # نشيل عنصر المعاينة كامل من الشجرة قبل ما ندور على النص الحقيقي.
+        reply_to_source_id = None
+        reply_tag = msg_div.find("a", class_="tgme_widget_message_reply")
+        if reply_tag:
+            href = reply_tag.get("href", "")
+            m = re.search(r'/(\d+)(?:\?.*)?$', href)
+            if m:
+                reply_to_source_id = int(m.group(1))
+            reply_tag.decompose()  # يشيلها من الشجرة، ما تتداخل مع البحث الجاي
+
         # النص (قد لا يوجد إذا كان المنشور صورة بدون كابشن)
         text_div = msg_div.find("div", class_="tgme_widget_message_text")
         text_html = str(text_div) if text_div else ""
@@ -202,7 +256,12 @@ def get_channel_posts():
             if m:
                 photo_urls.append(m.group(1))
 
-        posts.append({"id": post_id, "text_html": text_html, "photos": photo_urls})
+        posts.append({
+            "id": post_id,
+            "text_html": text_html,
+            "photos": photo_urls,
+            "reply_to": reply_to_source_id,
+        })
 
     posts.sort(key=lambda p: p["id"])  # ترتيب تصاعدي مضمون حسب رقم المنشور
     return posts
@@ -252,18 +311,26 @@ def clean_text(text_html):
     arabic_diacritics = re.compile(r'[\u064B-\u065F\u0670\u06D6-\u06ED]')
 
     lines = text.split('\n')
+    found_source_signature = False  # هل المصدر نفسه سوى توقيع/رابط بهالمنشور؟
     while lines:
         last = lines[-1].strip()
+        if last == '':
+            lines.pop()
+            continue
         last_normalized = arabic_diacritics.sub('', last)
-        if last == '' or signature_line.search(last_normalized) or link_line.search(last_normalized):
+        if signature_line.search(last_normalized) or link_line.search(last_normalized):
+            found_source_signature = True
             lines.pop()
             continue
         break  # وصلنا لسطر محتوى حقيقي -> نوقف الحذف فوراً
 
     text = '\n'.join(lines).strip()
 
-    # إضافة توقيع قناتك في نهاية كل منشور
-    text = f"{text}\n\n{OWN_SIGNATURE}" if text else OWN_SIGNATURE
+    # نضيف توقيعك بس لو المصدر نفسه سوى توقيعه بهالمنشور (حذفناه فوق).
+    # لو المنشور الأصلي ما فيه أي توقيع/رابط من المصدر، نسيب المنشور
+    # نظيف بدون إضافة أي توقيع.
+    if found_source_signature:
+        text = f"{text}\n\n{OWN_SIGNATURE}" if text else OWN_SIGNATURE
 
     return text
 
@@ -320,27 +387,45 @@ def post_with_retry(url, **kwargs):
     return r
 
 
-def send_text(text):
+def _extract_message_id(response, first_of_list=False):
+    """يستخرج message_id من رد تيليجرام الناجح، أو None لو فشل."""
+    if not response.ok:
+        return None
+    try:
+        data = response.json()
+        if not data.get("ok"):
+            return None
+        result = data["result"]
+        if first_of_list:
+            return result[0]["message_id"]
+        return result["message_id"]
+    except Exception:
+        return None
+
+
+def send_text(text, reply_to_message_id=None):
     if not text:
-        return True
+        return None
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": DEST_CHANNEL, "text": text}
     if BOLD_TEXT:
         payload["text"] = make_bold_html(text)
         payload["parse_mode"] = "HTML"
+    if reply_to_message_id:
+        payload["reply_to_message_id"] = reply_to_message_id
     r = post_with_retry(url, data=payload, timeout=15)
     log(f"   ↳ رد تيليجرام (نص): {r.status_code} {r.text[:200]}")
-    return r.ok and r.json().get("ok", False)
+    return _extract_message_id(r)
 
 
-def send_single_photo(photo_url, caption=""):
+def send_single_photo(photo_url, caption="", reply_to_message_id=None):
     # نحمّل الصورة بنفسنا ونرفعها مباشرة (upload) بدل ما نعطي تيليجرام
     # الرابط ويحاول يجيبه بنفسه -> هذا كان سبب خطأ 400 "failed to get HTTP URL content"
     try:
         image_bytes = download_image(photo_url)
     except Exception as e:
         log(f"   ↳ فشل تحميل الصورة: {e}")
-        return False
+        return None
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     payload = {"chat_id": DEST_CHANNEL}
@@ -351,13 +436,15 @@ def send_single_photo(photo_url, caption=""):
             payload["parse_mode"] = "HTML"
         else:
             payload["caption"] = cap
+    if reply_to_message_id:
+        payload["reply_to_message_id"] = reply_to_message_id
     files = {"photo": ("image.jpg", image_bytes)}
     r = post_with_retry(url, data=payload, files=files, timeout=30)
     log(f"   ↳ رد تيليجرام (صورة): {r.status_code} {r.text[:200]}")
-    return r.ok and r.json().get("ok", False)
+    return _extract_message_id(r)
 
 
-def send_media_group(photo_urls, caption=""):
+def send_media_group(photo_urls, caption="", reply_to_message_id=None):
     files = {}
     media = []
     for i, photo_url in enumerate(photo_urls):
@@ -379,23 +466,30 @@ def send_media_group(photo_urls, caption=""):
         media.append(item)
 
     if not media:
-        return False
+        return None
+
+    data_payload = {"chat_id": DEST_CHANNEL, "media": json.dumps(media)}
+    if reply_to_message_id:
+        data_payload["reply_to_message_id"] = reply_to_message_id
 
     api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMediaGroup"
-    r = post_with_retry(api_url, data={"chat_id": DEST_CHANNEL, "media": json.dumps(media)}, files=files, timeout=40)
+    r = post_with_retry(api_url, data=data_payload, files=files, timeout=40)
     log(f"   ↳ رد تيليجرام (ألبوم): {r.status_code} {r.text[:200]}")
-    return r.ok and r.json().get("ok", False)
+    return _extract_message_id(r, first_of_list=True)
 
 
-def send_post(text, photo_urls, post_id):
+def send_post(text, photo_urls, post_id, reply_to_message_id=None):
     """
     يقرر طريقة الإرسال حسب محتوى المنشور، ويطبع بالسجل ملخص واضح
-    لكل حالة (بصورة / بدون صورة / فشلت الصورة).
+    لكل حالة (بصورة / بدون صورة / فشلت الصورة). يرجع رقم رسالة
+    تيليجرام المرسلة بقناتك (أو None لو فشل الكل) - نحتاجه نخزنه
+    بدفتر المطابقة عشان ميزة الردود المستقبلية.
     """
     if not photo_urls:
-        send_text(text)
-        log(f"📤 تم إرسال المنشور {post_id} كنص فقط (بدون صورة)")
-        return
+        msg_id = send_text(text, reply_to_message_id=reply_to_message_id)
+        if msg_id:
+            log(f"📤 تم إرسال المنشور {post_id} كنص فقط (بدون صورة)")
+        return msg_id
 
     # نترك هامش أمان (20 حرف) بحد الكابشن عشان وسوم <b></b> اللي بتنضاف
     # وقت التنسيق العريض ما تسبب تجاوز حد تيليجرام (1024 حرف)
@@ -403,21 +497,25 @@ def send_post(text, photo_urls, post_id):
     caption = text if caption_fits else ""
 
     if len(photo_urls) == 1:
-        photo_sent = send_single_photo(photo_urls[0], caption=caption)
+        msg_id = send_single_photo(photo_urls[0], caption=caption, reply_to_message_id=reply_to_message_id)
         photo_desc = "مع صورة واحدة"
     else:
-        photo_sent = send_media_group(photo_urls, caption=caption)
+        msg_id = send_media_group(photo_urls, caption=caption, reply_to_message_id=reply_to_message_id)
         photo_desc = f"مع ألبوم من {len(photo_urls)} صور"
 
-    if photo_sent:
+    if msg_id:
         extra = "" if caption_fits else " (والنص الكامل أُرسل برسالة منفصلة لطوله)"
         log(f"📤 تم إرسال المنشور {post_id} {photo_desc}{extra}")
+        # النص الطويل الزايد يترسل عادي بدون ربطه كرد لحاله - أصلاً
+        # هو ملتصق بصرياً بعد رسالة الصورة اللي انربطت هي بالرد
+        if text and not caption_fits:
+            send_text(text)
     else:
         log(f"⚠️ فشل إرسال صورة المنشور {post_id}، تم إرسال النص فقط بدلاً منها")
+        msg_id = send_text(text, reply_to_message_id=reply_to_message_id)
 
-    # نرسل النص كرسالة منفصلة إذا: الصورة فشلت بالكامل، أو نجحت لكن بدون كابشن (طويل)
-    if text and (not photo_sent or not caption_fits):
-        send_text(text)
+    return msg_id
+
 
 
 # ============================================================
@@ -461,12 +559,29 @@ def run_once():
 
         log(f"📊 عدد المنشورات الجديدة: {len(new_posts)}")
 
+        id_map = load_id_map()
+
         for post in new_posts:
             try:
                 log(f"🔄 معالجة المنشور رقم {post['id']}...")
                 clean = clean_text(post["text_html"])
                 log(f"✏️ تم تنظيف نص المنشور {post['id']} (حذف التوقيع القديم + إضافة توقيعك)")
-                send_post(clean, post["photos"], post["id"])
+
+                # لو المنشور رد على منشور ثاني، نشوف هل عندنا "نسخته"
+                # بقناتك بدفتر المطابقة - لو عندنا، نرد عليه بنفس الشكل
+                reply_to_dest_id = None
+                if post.get("reply_to"):
+                    reply_to_dest_id = id_map.get(str(post["reply_to"]))
+                    if reply_to_dest_id:
+                        log(f"↩️ المنشور {post['id']} رد على المنشور {post['reply_to']} "
+                            f"(بقناتك: {reply_to_dest_id})")
+                    else:
+                        log(f"↩️ المنشور {post['id']} رد على منشور {post['reply_to']} "
+                            f"مو موجود بدفتر المطابقة - بيترسل عادي بدون رد")
+
+                dest_msg_id = send_post(clean, post["photos"], post["id"], reply_to_message_id=reply_to_dest_id)
+                if dest_msg_id:
+                    id_map[str(post["id"])] = dest_msg_id
                 log(f"✅ تم نسخ المنشور {post['id']} بنجاح")
             except Exception as post_err:
                 # خطأ بمنشور واحد بس -> نطبعه ونكمل، وما نوقف الدفعة كلها
@@ -475,6 +590,7 @@ def run_once():
                 # نحدّث آخر منشور تمت معالجته بعد كل منشور (نجح أو فشل) عشان
                 # ما نرجع نرسل نفس المنشور مرة ثانية بالتشغيلة الجاية
                 save_last_seen_id(post["id"])
+                id_map = save_id_map(id_map)
     finally:
         # نحفظ السجل دائماً حتى لو صار خطأ غير متوقع بأي مكان فوق
         flush_log()
