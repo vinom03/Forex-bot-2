@@ -22,6 +22,14 @@ on:
     - cron: '*/5 * * * *'   # يشتغل تلقائياً كل 5 دقائق
   workflow_dispatch:         # يسمح لك بتشغيله يدوياً من واجهة GitHub لتجربته فوراً
 
+# يمنع تشغيل أكثر من نسخة بنفس الوقت - لو تشغيلة جديدة بدأت وفيه
+# وحدة قديمة لسا شغالة، الجديدة تنتظر لين القديمة تخلص. هذا يمنع
+# تضارب قراءة/كتابة last_seen_id.txt اللي كان يسبب إرسال نفس
+# المنشور مرتين لو تزامنت تشغيلتين.
+concurrency:
+  group: telegram-forwarder-bot
+  cancel-in-progress: false
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
@@ -50,6 +58,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_seen_id.txt bot_log.txt
+          git add last_seen_id.txt bot_log.txt id_map.json
           git diff --staged --quiet || git commit -m "تحديث آخر منشور وسجل التشغيل"
           git push
