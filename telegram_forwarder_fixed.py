@@ -582,8 +582,7 @@ def run_once():
                     else:
                         log(f"↩️ المنشور {post['id']} رد على منشور {post['reply_to']} "
                             f"مو موجود بدفتر المطابقة - بيترسل عادي بدون رد")
-
-              dest_msg_id = send_post(clean, post["photos"], post["id"], reply_to_message_id=reply_to_dest_id)
+                        dest_msg_id = send_post(clean, post["photos"], post["id"], reply_to_message_id=reply_to_dest_id)
                 if dest_msg_id:
                     id_map[str(post["id"])] = dest_msg_id
                     if reply_to_dest_id:
