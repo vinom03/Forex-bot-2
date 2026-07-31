@@ -583,12 +583,12 @@ def run_once():
                         log(f"↩️ المنشور {post['id']} رد على منشور {post['reply_to']} "
                             f"مو موجود بدفتر المطابقة - بيترسل عادي بدون رد")
                         dest_msg_id = send_post(clean, post["photos"], post["id"], reply_to_message_id=reply_to_dest_id)
-                if dest_msg_id:
-                    id_map[str(post["id"])] = dest_msg_id
-                    if reply_to_dest_id:
-                        log(f"↩️ تأكيد: تم إرسال المنشور {post['id']} كرد حقيقي على رسالتك رقم {reply_to_dest_id} بقناتك ✅")
-                log(f"✅ تم نسخ المنشور {post['id']} بنجاح")
-
+                        if dest_msg_id:
+                            id_map[str(post["id"])] = dest_msg_id
+                            if reply_to_dest_id:
+                                log(f"↩️ تأكيد: تم إرسال المنشور {post['id']} كرد حقيقي على رسالتك رقم {reply_to_dest_id} بقناتك ✅")
+                                log(f"✅ تم نسخ المنشور {post['id']} بنجاح")
+                                
             except Exception as post_err:
                 # خطأ بمنشور واحد بس -> نطبعه ونكمل، وما نوقف الدفعة كلها
                 log(f"❌ فشل إرسال المنشور {post['id']}: {post_err}")
