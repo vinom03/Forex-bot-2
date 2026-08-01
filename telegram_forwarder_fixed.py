@@ -573,10 +573,10 @@ def run_once():
 
                 # لو المنشور رد على منشور ثاني، نشوف هل عندنا "نسخته"
                 # بقناتك بدفتر المطابقة - لو عندنا، نرد عليه بنفس الشكل
-            reply_to_dest_id = None
-            if post.get("reply_to"):
-                reply_to_dest_id = id_map.get(str(post["reply_to"]))
-                 if reply_to_dest_id:
+                reply_to_dest_id = None
+                if post.get("reply_to"):
+                    reply_to_dest_id = id_map.get(str(post["reply_to"]))
+                    if reply_to_dest_id:
                         log(f"↩️ المنشور {post['id']} رد على المنشور {post['reply_to']} "
                             f"(بقناتك: {reply_to_dest_id})")
                     else:
