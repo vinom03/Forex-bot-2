@@ -76,7 +76,7 @@ if not BOT_TOKEN:
     )
 
 DEST_CHANNEL = "@ForexGold_Pro"      # 🔧 قناتك (وين يترسل المنشور)
-SOURCE_CHANNEL = "king_el_fx"  # 🔧 القناة المصدر (منين يُجلب المنشور)
+SOURCE_CHANNEL = "bu3oof_fx"  # 🔧 القناة المصدر (منين يُجلب المنشور)
 
 TELEGRAM_CAPTION_LIMIT = 1024  # حد تيليجرام لطول الكابشن مع الصور
 
@@ -208,7 +208,7 @@ def get_channel_posts():
     return posts
 
 
-OWN_SIGNATURE = "📢 قناة ForexGold Pro || اشترك الآن:\nhttps://t.me/YOSEEF_ADMIN"  # 🔧
+OWN_SIGNATURE = "📢 للانضمام :\nhttps://t.me/YOSEEF_ADMIN"  # 🔧
 
 BOLD_TEXT = True
 
@@ -231,7 +231,7 @@ def clean_text(text_html):
 
     text = re.sub(r'[\u200b\u200c\u200d\u200e\u200f\ufeff]', '', text)
 
-    signature_line = re.compile(r'@king_el_forex2', re.IGNORECASE)  # 🔧 توقيع القناة المصدر
+    signature_line = re.compile(r'@Abdulrahamn2022', re.IGNORECASE)  # 🔧 توقيع القناة المصدر
     link_line = re.compile(r'(t\.me|telegram\.me)/', re.IGNORECASE)
     arabic_diacritics = re.compile(r'[\u064B-\u065F\u0670\u06D6-\u06ED]')
 
