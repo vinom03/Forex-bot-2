@@ -246,7 +246,8 @@ def clean_text(text_html):
             lines.pop()
             continue
         last_normalized = arabic_diacritics.sub('', last)
-        if signature_line.search(last_normalized) or link_line.search(last_normalized):
+        if any(p.search(last_normalized) for p in signature_patterns) or link_line.search(last_normalized):
+
             found_source_signature = True
             lines.pop()
             continue
