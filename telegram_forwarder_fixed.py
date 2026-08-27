@@ -231,7 +231,10 @@ def clean_text(text_html):
 
     text = re.sub(r'[\u200b\u200c\u200d\u200e\u200f\ufeff]', '', text)
 
-    signature_line = re.compile(r'@Abdulrahamn2022', re.IGNORECASE)  # 🔧 توقيع القناة المصدر
+    signature_patterns = [
+    re.compile(r'@Abdulrahamn2022', re.IGNORECASE),
+    re.compile(r'@Qatar1992', re.IGNORECASE),
+    ]
     link_line = re.compile(r'(t\.me|telegram\.me)/', re.IGNORECASE)
     arabic_diacritics = re.compile(r'[\u064B-\u065F\u0670\u06D6-\u06ED]')
 
