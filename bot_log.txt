@@ -1,8 +1,3 @@
-📍 يراقب من المنشور رقم: 21601
-📊 عدد المنشورات الجديدة: 4
-🔄 معالجة المنشور رقم 21602...
-ℹ️ المصدر ما سوى أي توقيع بهالمنشور - راح يترسل نظيف بدون توقيع
-✏️ تم تنظيف نص المنشور 21602 (حذف التوقيع القديم + إضافة توقيعك)
 ↩️ المنشور 21602 رد على المنشور 21598 (بقناتك: 5559)
 ⚠️ محاولة 1/2 فشلت (تحميل صورة): 500 Server Error: Internal Server Error for url: https://cdn4.telesco.pe/file/YEdvuWxqMnNcTPZvDBnOHaSNHY5vnR415wGzSQF0GD9gsZX0m-xxsrxWNLo1GIhsUrfdf5nY9MyYRKQ5ufS7WLe27HV9Eks2mDYdbdPRWI6QwqMYy3e9srM7cb1VPLN6unHBYT7qkfKHQbaYSRHL6g1Qrb-lkkL6hUMFS5gkxfSRqozyofQloHBjCeoYoVl5WJq6WAbKLm6qTGLYgbftO6BBlv7wLH8Mv1UzKPWs4ZktcXsqBy7a1dHauJWjJW13LYK_mHdOqAXuLULuYRNW9-jNNWFVQfLBfQsCSYt2d-Sk05-GgtkbIuhrqWWa4nZGJCPKPxk_sAPaRI7Kf8z9og.jpg
    ↳ رد تيليجرام (صورة): 200 {"ok":true,"result":{"message_id":5563,"sender_chat":{"id":-1002185993091,"title":"Forex Gold Pro | \u0644\u0640\u062a\u062f\u0627\u0648\u0644 \u0627\u0644\u0630\u0647\u0628","username":"ForexGold_Pro
@@ -294,6 +289,11 @@
 📍 يراقب من المنشور رقم: 21616
 ℹ️ ما فيه منشورات جديدة هالمرة.
 --- 2026-09-04 15:50:18 UTC ---
+==================================================
+🤖 البوت اشتغل - يتحقق من منشورات جديدة...
+📍 يراقب من المنشور رقم: 21616
+ℹ️ ما فيه منشورات جديدة هالمرة.
+--- 2026-09-04 16:00:29 UTC ---
 ==================================================
 🤖 البوت اشتغل - يتحقق من منشورات جديدة...
 📍 يراقب من المنشور رقم: 21616
