@@ -76,7 +76,7 @@ if not BOT_TOKEN:
     )
 
 DEST_CHANNEL = "@ForexGold_Pro"      # 🔧 قناتك (وين يترسل المنشور)
-SOURCE_CHANNEL = "Crypto_q88"  # 🔧 القناة المصدر (منين يُجلب المنشور)
+SOURCE_CHANNEL = "Cryptoarabic005"  # 🔧 القناة المصدر (منين يُجلب المنشور)
 
 TELEGRAM_CAPTION_LIMIT = 1024  # حد تيليجرام لطول الكابشن مع الصور
 
@@ -232,8 +232,8 @@ def clean_text(text_html):
     text = re.sub(r'[\u200b\u200c\u200d\u200e\u200f\ufeff]', '', text)
 
     signature_patterns = [
-    re.compile(r'@Abdulrahamn2022', re.IGNORECASE),
-    re.compile(r'@Qatar1992', re.IGNORECASE),
+    re.compile(r'@Abdelhamed00', re.IGNORECASE),
+    re.compile(r'@Abdelhamed00', re.IGNORECASE),
     ]
     link_line = re.compile(r'(t\.me|telegram\.me)/', re.IGNORECASE)
     arabic_diacritics = re.compile(r'[\u064B-\u065F\u0670\u06D6-\u06ED]')
